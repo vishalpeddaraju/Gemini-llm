@@ -1,69 +1,151 @@
+
 from dotenv import load_dotenv
 import streamlit as st
 import os
+import time
 from pathlib import Path
 from PIL import Image
 from google import genai
+from google.genai import errors
 
-# Load .env from the same folder as this Python file
+
+# --------------------------------------------------
+# 1. Streamlit Configuration
+# --------------------------------------------------
+
+st.set_page_config(
+    page_title="Gemini Image Application",
+    layout="centered"
+)
+
+
+# --------------------------------------------------
+# 2. Load Environment Variables
+# --------------------------------------------------
+
 env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
-# Get API key
 api_key = os.getenv("GEMINI_API_KEY")
 
 if not api_key:
-    st.error("GOOGLE_API_KEY is not found in your .env file.")
+    st.error("GEMINI_API_KEY not found. Please check your .env file.")
     st.stop()
 
-client = genai.Client(api_key=api_key)
 
+# --------------------------------------------------
+# 3. Initialize Gemini Client
+# --------------------------------------------------
+
+client = genai.Client(api_key=api_key)
+MODEL_NAME = "gemini-3.5-flash-lite"
+
+
+# --------------------------------------------------
+# 4. Gemini Image Response Function
+# --------------------------------------------------
 
 def get_gemini_response(prompt, image):
 
-    if prompt:
-        response = client.models.generate_content(
-            model="gemini-3.8-flash",
-            contents=[prompt, image]
-        )
-    else:
-        response = client.models.generate_content(
-            model="gemini-3.8-flash",
-            contents=image
+    if not prompt.strip():
+        prompt = (
+            "Analyze this image and provide a clear description "
+            "of its contents, important details, and observations."
         )
 
-    return response.text
+    for attempt in range(3):
+
+        try:
+
+            response = client.models.generate_content(
+                model=MODEL_NAME,
+                contents=[prompt, image]
+            )
+
+            if not response.text:
+                raise ValueError("Gemini returned an empty response.")
+
+            return response.text
+
+        except errors.APIError as e:
+
+            # Retry temporary server errors
+            if e.code == 503 and attempt < 2:
+
+                wait_time = 2 ** (attempt + 1)
+
+                st.warning(
+                    f"Gemini server is busy. "
+                    f"Retrying in {wait_time} seconds..."
+                )
+
+                time.sleep(wait_time)
+
+            else:
+                raise
+
+    raise Exception(
+        "Gemini is currently unavailable. Please try again later."
+    )
 
 
-# Streamlit app
-st.set_page_config(page_title="Gemini Image Demo")
+# --------------------------------------------------
+# 5. Streamlit Application Interface
+# --------------------------------------------------
 
-st.header("Gemini Image Application")
+st.title("🖼️ Gemini Image Application")
+
+st.caption("Powered by Google Gemini API")
+
+st.write(
+    "Upload an image and ask Gemini to analyze, "
+    "describe, or explain its contents."
+)
+
+
+# --------------------------------------------------
+# 6. User Input
+# --------------------------------------------------
 
 prompt = st.text_input(
-    "Input Prompt:",
-    placeholder="Describe this image..."
+    "Enter your prompt:",
+    placeholder="Example: Explain the architecture shown in this image..."
 )
 
 uploaded_file = st.file_uploader(
-    "Choose an image...",
+    "Upload an image",
     type=["jpg", "jpeg", "png"]
 )
+
+
+# --------------------------------------------------
+# 7. Display Uploaded Image
+# --------------------------------------------------
 
 image = None
 
 if uploaded_file is not None:
 
-    image = Image.open(uploaded_file)
+    try:
 
-    st.image(
-        image,
-        caption="Uploaded Image",
-        width="stretch"
-    )
+        image = Image.open(uploaded_file).convert("RGB")
+
+        st.image(
+            image,
+            caption="Uploaded Image",
+            width="stretch"
+        )
+
+    except Exception:
+        st.error("Unable to read this image. Please upload another image.")
+        image = None
 
 
-if st.button("Tell me about the image"):
+# --------------------------------------------------
+# 8. Analyze Image
+# --------------------------------------------------
+
+if st.button("Analyze Image", use_container_width=True):
 
     if image is None:
 
@@ -71,20 +153,52 @@ if st.button("Tell me about the image"):
 
     else:
 
-        with st.spinner("Gemini is analyzing the image..."):
+        try:
 
-            try:
+            with st.spinner("Gemini is analyzing your image..."):
 
                 response = get_gemini_response(
                     prompt,
                     image
                 )
 
-                st.subheader("Response")
+            st.success("Image analysis completed!")
 
-                st.write(response)
+            st.subheader("Gemini Response")
 
-            except Exception as e:
+            st.markdown(response)
 
-                st.error("Error while communicating with Gemini:")
-                st.exception(e)
+        except errors.APIError as e:
+
+            if e.code == 503:
+
+                st.error(
+                    "Gemini server is experiencing high demand. "
+                    "Please try again after some time."
+                )
+
+            elif e.code == 429:
+
+                st.error(
+                    "API rate limit reached. Please try again later."
+                )
+
+            else:
+
+                st.error(f"Gemini API Error: {e}")
+
+        except Exception as e:
+
+            st.error("Unable to analyze the image.")
+
+            with st.expander("View error details"):
+                st.code(str(e))
+
+
+# --------------------------------------------------
+# 9. Footer
+# --------------------------------------------------
+
+st.divider()
+
+st.caption("Developed using Python, Streamlit and Google Gemini API")

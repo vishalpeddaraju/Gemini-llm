@@ -42,12 +42,26 @@ if submit:
 
     if input_text:
 
-        response = get_gemini_response(input_text)
+        try:
+            with st.spinner("Gemini is generating your response..."):
 
-        st.subheader("The Response is")
+                response = get_gemini_response(input_text)
 
-        st.write(response)
+            st.subheader("The Response is")
+            st.write(response)
+
+        except Exception as e:
+
+            error_message = str(e)
+
+            if "503" in error_message or "UNAVAILABLE" in error_message:
+                st.warning(
+                    "Gemini server is currently experiencing high demand. "
+                    "Please try again after a minute."
+                )
+            else:
+                st.error("Something went wrong while connecting to Gemini.")
+                st.caption(error_message)
 
     else:
-
         st.warning("Please enter a question.")
