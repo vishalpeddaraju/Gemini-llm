@@ -20,21 +20,21 @@ This project contains three applications:
 - Supports contextual follow-up questions.
 - Clear chat functionality.
 
-![Gemini Chatbot Interface](C:\Users\pedda\OneDrive\Pictures\Screenshots\chatbot-interface.png)
+![Gemini Chatbot Interface](screenshots/chatbot-interface.png)
 
 ### Technical Question Answering
 
-![Technical Response](C:\Users\pedda\OneDrive\Pictures\Screenshots\technical-response.png)
+![Technical Response](screenshots/technical-response.png)
 
 ### Contextual Conversations
 
-![Conversation History](C:\Users\pedda\OneDrive\Pictures\Screenshots\conversation-history.png)
+![Conversation History](screenshots/conversation-history.png)
 
 ### Code Generation
 
-![Code Generation](C:\Users\pedda\OneDrive\Pictures\Screenshots\code-generation.png)
+![Code Generation](screenshots/code-generation.png)
 
-### 2. Gemini Vision AI
+### 2. Gemini Vision AIs
 
 - Upload images in JPG, JPEG, and PNG formats.
 - Analyze image content using Gemini's multimodal capabilities.
